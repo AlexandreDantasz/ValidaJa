@@ -1,8 +1,8 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { OptionPills } from '@/components/option-pills';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 import { adicionarDias, formatarData } from '@/utils/validade';
 
 interface DateQuickPickerProps {
@@ -12,10 +12,10 @@ interface DateQuickPickerProps {
 }
 
 const ATALHOS = [
-  { rotulo: 'Hoje', dias: 0 },
-  { rotulo: '+3 dias', dias: 3 },
-  { rotulo: '+7 dias', dias: 7 },
-  { rotulo: '+30 dias', dias: 30 },
+  { rotulo: 'Hoje', descricao: 'Hoje', dias: 0 },
+  { rotulo: '+3 dias', descricao: 'Daqui a 3 dias', dias: 3 },
+  { rotulo: '+7 dias', descricao: 'Daqui a 7 dias', dias: 7 },
+  { rotulo: '+30 dias', descricao: 'Daqui a 30 dias', dias: 30 },
 ];
 
 /**
@@ -23,31 +23,25 @@ const ATALHOS = [
  * picker nativo — reutilizável em qualquer formulário que peça uma data.
  */
 export function DateQuickPicker({ label, valorISO, aoSelecionar }: DateQuickPickerProps) {
-  const theme = useTheme();
+  const opcoes = ATALHOS.map((atalho) => {
+    const data = adicionarDias(atalho.dias);
+    return {
+      value: data,
+      label: atalho.rotulo,
+      accessibilityLabel: `${atalho.descricao}, ${formatarData(data)}`,
+    };
+  });
+  const selecionada = opcoes.find((opcao) => opcao.value.slice(0, 10) === valorISO.slice(0, 10));
 
   return (
     <View style={styles.container}>
-      <ThemedText type="smallBold">{label}</ThemedText>
-      <View style={styles.pillsRow}>
-        {ATALHOS.map((atalho) => {
-          const dataAtalho = adicionarDias(atalho.dias);
-          const selecionado = dataAtalho.slice(0, 10) === valorISO.slice(0, 10);
-          return (
-            <Pressable
-              key={atalho.rotulo}
-              onPress={() => aoSelecionar(dataAtalho)}
-              style={[
-                styles.pill,
-                { backgroundColor: selecionado ? '#208AEF' : theme.backgroundElement },
-              ]}>
-              <ThemedText type="small" style={{ color: selecionado ? '#ffffff' : theme.text }}>
-                {atalho.rotulo}
-              </ThemedText>
-            </Pressable>
-          );
-        })}
-      </View>
-      <ThemedText type="small" themeColor="textSecondary">
+      <OptionPills
+        label={label}
+        opcoes={opcoes}
+        valor={selecionada?.value ?? ''}
+        aoSelecionar={aoSelecionar}
+      />
+      <ThemedText type="small" themeColor="textSecondary" accessibilityLiveRegion="polite">
         Data selecionada: {formatarData(valorISO)}
       </ThemedText>
     </View>
@@ -56,16 +50,6 @@ export function DateQuickPicker({ label, valorISO, aoSelecionar }: DateQuickPick
 
 const styles = StyleSheet.create({
   container: {
-    gap: Spacing.one,
-  },
-  pillsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: Spacing.two,
-  },
-  pill: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    borderRadius: Spacing.five,
   },
 });

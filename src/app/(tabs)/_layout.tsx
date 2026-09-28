@@ -1,16 +1,24 @@
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Tabs } from 'expo-router';
-import { StyleSheet, Text } from 'react-native';
+import type { ComponentProps } from 'react';
+import type { ColorValue } from 'react-native';
 
 import { useTheme } from '@/hooks/use-theme';
 
-function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
-  return <Text style={[styles.emoji, { opacity: focused ? 1 : 0.5 }]}>{emoji}</Text>;
+type NomeIcone = ComponentProps<typeof MaterialIcons>['name'];
+
+function iconeDaAba(nome: NomeIcone) {
+  return function TabIcon({ color, size }: { color: ColorValue; size: number }) {
+    return <MaterialIcons name={nome} size={size} color={color} />;
+  };
 }
 
 /**
- * Navegação por abas entre Início e Estatísticas. Usa o navegador de abas
- * padrão do Expo Router (em vez do NativeTabs, ainda instável) para permitir
- * telas empilhadas (cadastro, detalhes, configurações) sobre a mesma navegação.
+ * Navegação principal por abas na base da tela — zona de alcance do polegar
+ * (Lei de Fitts) — entre as três áreas do app: Início, Estatísticas e
+ * Ajustes. A aba ativa é indicada pela cor do ícone e do rótulo e anunciada
+ * como "selecionada" pelo leitor de tela; cada aba tem um rótulo acessível
+ * próprio.
  */
 export default function TabsLayout() {
   const theme = useTheme();
@@ -19,30 +27,35 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: theme.text,
+        tabBarActiveTintColor: theme.primary,
         tabBarInactiveTintColor: theme.textSecondary,
-        tabBarStyle: { backgroundColor: theme.background, borderTopColor: theme.backgroundElement },
+        tabBarLabelStyle: { fontSize: 12, fontWeight: 600 },
+        tabBarStyle: { backgroundColor: theme.background, borderTopColor: theme.border },
       }}>
       <Tabs.Screen
         name="index"
         options={{
           title: 'Início',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🏠" focused={focused} />,
+          tabBarAccessibilityLabel: 'Início, lista de itens',
+          tabBarIcon: iconeDaAba('kitchen'),
         }}
       />
       <Tabs.Screen
         name="explore"
         options={{
           title: 'Estatísticas',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="📊" focused={focused} />,
+          tabBarAccessibilityLabel: 'Estatísticas de desperdício',
+          tabBarIcon: iconeDaAba('insights'),
+        }}
+      />
+      <Tabs.Screen
+        name="configuracoes"
+        options={{
+          title: 'Ajustes',
+          tabBarAccessibilityLabel: 'Ajustes de notificação',
+          tabBarIcon: iconeDaAba('settings'),
         }}
       />
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  emoji: {
-    fontSize: 20,
-  },
-});

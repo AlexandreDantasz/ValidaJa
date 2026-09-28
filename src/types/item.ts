@@ -13,4 +13,6 @@ export interface Item {
   local: LocalArmazenamento;
   status: StatusItem;
   criadoEm: string;
+  /** Data em que o item foi marcado como consumido ou descartado. */
+  finalizadoEm?: string;
 }

@@ -1,12 +1,15 @@
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { MinTouchTarget, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 interface Opcao<T extends string> {
   value: T;
   label: string;
+  /** Texto lido pelo leitor de tela, quando o rótulo visual é abreviado. */
+  accessibilityLabel?: string;
 }
 
 interface OptionPillsProps<T extends string> {
@@ -17,8 +20,10 @@ interface OptionPillsProps<T extends string> {
 }
 
 /**
- * Menu de seleção em formato de "pills", reutilizado para escolher categoria
- * e local de armazenamento nos formulários.
+ * Menu de seleção única em formato de "pills" (categoria, local de
+ * armazenamento, atalhos de data, filtros). Para o leitor de tela funciona
+ * como um grupo de botões de opção (radio), anunciando qual está marcada;
+ * visualmente a opção marcada tem cor, borda e ícone de check — nunca só cor.
  */
 export function OptionPills<T extends string>({ label, opcoes, valor, aoSelecionar }: OptionPillsProps<T>) {
   const theme = useTheme();
@@ -26,20 +31,30 @@ export function OptionPills<T extends string>({ label, opcoes, valor, aoSelecion
   return (
     <View style={styles.container}>
       <ThemedText type="smallBold">{label}</ThemedText>
-      <View style={styles.pillsRow}>
+      <View style={styles.pillsRow} accessibilityRole="radiogroup" accessibilityLabel={label}>
         {opcoes.map((opcao) => {
           const selecionada = opcao.value === valor;
+          const corTexto = selecionada ? theme.onPrimary : theme.text;
           return (
             <Pressable
               key={opcao.value}
               onPress={() => aoSelecionar(opcao.value)}
-              style={[
+              accessibilityRole="radio"
+              accessibilityLabel={opcao.accessibilityLabel ?? opcao.label}
+              accessibilityState={{ checked: selecionada, selected: selecionada }}
+              style={({ pressed }) => [
                 styles.pill,
                 {
-                  backgroundColor: selecionada ? '#208AEF' : theme.backgroundElement,
+                  backgroundColor: selecionada
+                    ? theme.primary
+                    : pressed
+                      ? theme.backgroundSelected
+                      : theme.backgroundElement,
+                  borderColor: selecionada ? theme.primary : theme.border,
                 },
               ]}>
-              <ThemedText type="small" style={{ color: selecionada ? '#ffffff' : theme.text }}>
+              {selecionada ? <MaterialIcons name="check" size={18} color={corTexto} /> : null}
+              <ThemedText type={selecionada ? 'smallBold' : 'small'} style={{ color: corTexto }}>
                 {opcao.label}
               </ThemedText>
             </Pressable>
@@ -52,7 +67,7 @@ export function OptionPills<T extends string>({ label, opcoes, valor, aoSelecion
 
 const styles = StyleSheet.create({
   container: {
-    gap: Spacing.one,
+    gap: Spacing.two,
   },
   pillsRow: {
     flexDirection: 'row',
@@ -60,8 +75,12 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   pill: {
+    minHeight: MinTouchTarget,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
     borderRadius: Spacing.five,
+    borderWidth: 1,
   },
 });

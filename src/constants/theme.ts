@@ -1,6 +1,8 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Cores do app nos temas claro e escuro. Todas as cores usadas em texto
+ * (primary, danger, warning, attention, success, textSecondary) têm contraste
+ * mínimo de 4,5:1 (WCAG AA) contra `background` e `backgroundElement` do
+ * próprio tema; `border` tem pelo menos 3:1 (mínimo para elementos gráficos).
  */
 
 import '@/global.css';
@@ -14,6 +16,16 @@ export const Colors = {
     backgroundElement: '#F0F0F3',
     backgroundSelected: '#E0E1E6',
     textSecondary: '#60646C',
+    border: '#7E808A',
+    primary: '#0A66C2',
+    onPrimary: '#ffffff',
+    danger: '#C4262E',
+    warning: '#A94700',
+    attention: '#806200',
+    success: '#1B7546',
+    toastBackground: '#1C1D20',
+    toastText: '#ffffff',
+    toastAction: '#7CB8FF',
   },
   dark: {
     text: '#ffffff',
@@ -21,6 +33,16 @@ export const Colors = {
     backgroundElement: '#212225',
     backgroundSelected: '#2E3135',
     textSecondary: '#B0B4BA',
+    border: '#7C8088',
+    primary: '#4DA3FF',
+    onPrimary: '#000000',
+    danger: '#FF8589',
+    warning: '#FFA657',
+    attention: '#F2D34B',
+    success: '#4CC38A',
+    toastBackground: '#EDEEF0',
+    toastText: '#111113',
+    toastAction: '#0A66C2',
   },
 } as const;
 
@@ -61,5 +83,12 @@ export const Spacing = {
   six: 64,
 } as const;
 
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
+/**
+ * Tamanho mínimo de qualquer alvo de toque (48dp — recomendação do Material
+ * Design; o iOS recomenda 44pt). Aplicado em botões, pills, cards e steppers
+ * para respeitar a Lei de Fitts: alvos maiores são mais rápidos e precisos
+ * de acertar.
+ */
+export const MinTouchTarget = 48;
+
 export const MaxContentWidth = 800;

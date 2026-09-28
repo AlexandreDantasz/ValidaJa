@@ -1,18 +1,17 @@
 import { useState } from 'react';
-import { StyleSheet } from 'react-native';
+import { AccessibilityInfo, StyleSheet } from 'react-native';
 
 import { DateQuickPicker } from '@/components/date-quick-picker';
 import { FormField } from '@/components/form-field';
 import { OptionPills } from '@/components/option-pills';
 import { PrimaryButton } from '@/components/primary-button';
-import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { CATEGORIAS, LOCAIS } from '@/constants/categorias';
 import { Spacing } from '@/constants/theme';
 import type { Categoria, Item, LocalArmazenamento } from '@/types/item';
 import { adicionarDias } from '@/utils/validade';
 
-type DadosFormulario = Omit<Item, 'id' | 'status' | 'criadoEm'>;
+type DadosFormulario = Omit<Item, 'id' | 'status' | 'criadoEm' | 'finalizadoEm'>;
 
 interface ItemFormProps {
   itemInicial?: Item;
@@ -20,9 +19,15 @@ interface ItemFormProps {
   aoSalvar: (dados: DadosFormulario) => void;
 }
 
+interface ErrosFormulario {
+  nome?: string;
+  quantidade?: string;
+}
+
 /**
  * Formulário reutilizado tanto para cadastrar quanto para editar um item —
- * único lugar com a lógica de entrada de dados do item.
+ * único lugar com a lógica de entrada de dados do item. Erros de validação
+ * aparecem junto ao campo com problema e são anunciados ao leitor de tela.
  */
 export function ItemForm({ itemInicial, textoBotao, aoSalvar }: ItemFormProps) {
   const [nome, setNome] = useState(itemInicial?.nome ?? '');
@@ -30,21 +35,28 @@ export function ItemForm({ itemInicial, textoBotao, aoSalvar }: ItemFormProps) {
   const [categoria, setCategoria] = useState<Categoria>(itemInicial?.categoria ?? 'mercearia');
   const [local, setLocal] = useState<LocalArmazenamento>(itemInicial?.local ?? 'geladeira');
   const [dataValidade, setDataValidade] = useState(itemInicial?.dataValidade ?? adicionarDias(7));
-  const [erro, setErro] = useState('');
+  const [erros, setErros] = useState<ErrosFormulario>({});
 
   function handleSalvar() {
-    const quantidadeNumerica = Number(quantidade);
+    const quantidadeNumerica = Number(quantidade.replace(',', '.'));
+    const novosErros: ErrosFormulario = {};
 
     if (!nome.trim()) {
-      setErro('Informe o nome do item.');
-      return;
+      novosErros.nome = 'Informe o nome do item, por exemplo "Leite integral".';
     }
     if (!quantidadeNumerica || quantidadeNumerica <= 0) {
-      setErro('Informe uma quantidade válida.');
+      novosErros.quantidade = 'Informe uma quantidade maior que zero.';
+    }
+
+    setErros(novosErros);
+    const mensagens = Object.values(novosErros);
+    if (mensagens.length > 0) {
+      AccessibilityInfo.announceForAccessibility(
+        `Não foi possível salvar. ${mensagens.join(' ')}`,
+      );
       return;
     }
 
-    setErro('');
     aoSalvar({
       nome: nome.trim(),
       quantidade: quantidadeNumerica,
@@ -60,7 +72,13 @@ export function ItemForm({ itemInicial, textoBotao, aoSalvar }: ItemFormProps) {
         label="Nome do item"
         placeholder="Ex.: Leite integral"
         value={nome}
-        onChangeText={setNome}
+        onChangeText={(texto) => {
+          setNome(texto);
+          if (erros.nome) setErros((atual) => ({ ...atual, nome: undefined }));
+        }}
+        erro={erros.nome}
+        autoCapitalize="sentences"
+        returnKeyType="next"
       />
 
       <FormField
@@ -68,7 +86,11 @@ export function ItemForm({ itemInicial, textoBotao, aoSalvar }: ItemFormProps) {
         placeholder="1"
         keyboardType="numeric"
         value={quantidade}
-        onChangeText={setQuantidade}
+        onChangeText={(texto) => {
+          setQuantidade(texto);
+          if (erros.quantidade) setErros((atual) => ({ ...atual, quantidade: undefined }));
+        }}
+        erro={erros.quantidade}
       />
 
       <OptionPills label="Categoria" opcoes={CATEGORIAS} valor={categoria} aoSelecionar={setCategoria} />
@@ -82,13 +104,7 @@ export function ItemForm({ itemInicial, textoBotao, aoSalvar }: ItemFormProps) {
 
       <DateQuickPicker label="Data de validade" valorISO={dataValidade} aoSelecionar={setDataValidade} />
 
-      {erro ? (
-        <ThemedText type="small" style={styles.erro}>
-          {erro}
-        </ThemedText>
-      ) : null}
-
-      <PrimaryButton label={textoBotao} onPress={handleSalvar} />
+      <PrimaryButton label={textoBotao} icone="check" onPress={handleSalvar} />
     </ThemedView>
   );
 }
@@ -96,8 +112,5 @@ export function ItemForm({ itemInicial, textoBotao, aoSalvar }: ItemFormProps) {
 const styles = StyleSheet.create({
   container: {
     gap: Spacing.four,
-  },
-  erro: {
-    color: '#E5484D',
   },
 });

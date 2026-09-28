@@ -44,15 +44,39 @@ const ITENS_INICIAIS: Item[] = [
     status: 'ativo',
     criadoEm: new Date().toISOString(),
   },
+  {
+    id: '5',
+    nome: 'Iogurte natural',
+    categoria: 'laticinios',
+    quantidade: 2,
+    dataValidade: adicionarDias(2),
+    local: 'geladeira',
+    status: 'consumido',
+    criadoEm: new Date().toISOString(),
+    finalizadoEm: adicionarDias(-1),
+  },
+  {
+    id: '6',
+    nome: 'Tomate',
+    categoria: 'hortifruti',
+    quantidade: 3,
+    dataValidade: adicionarDias(-3),
+    local: 'geladeira',
+    status: 'descartado',
+    criadoEm: new Date().toISOString(),
+    finalizadoEm: adicionarDias(-2),
+  },
 ];
 
-type NovoItem = Omit<Item, 'id' | 'status' | 'criadoEm'>;
+type NovoItem = Omit<Item, 'id' | 'status' | 'criadoEm' | 'finalizadoEm'>;
 
 interface ItemsContextValue {
   itens: Item[];
   adicionarItem: (item: NovoItem) => void;
   atualizarItem: (id: string, item: NovoItem) => void;
   definirStatus: (id: string, status: StatusItem) => void;
+  /** Volta um item exatamente ao estado salvo antes de uma ação (usado pelo "Desfazer"). */
+  restaurarEstado: (itemAnterior: Item) => void;
   buscarPorId: (id: string) => Item | undefined;
 }
 
@@ -73,14 +97,21 @@ export function ItemsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const definirStatus = useCallback((id: string, status: StatusItem) => {
-    setItens((atual) => atual.map((item) => (item.id === id ? { ...item, status } : item)));
+    const finalizadoEm = status === 'ativo' ? undefined : new Date().toISOString();
+    setItens((atual) =>
+      atual.map((item) => (item.id === id ? { ...item, status, finalizadoEm } : item)),
+    );
+  }, []);
+
+  const restaurarEstado = useCallback((itemAnterior: Item) => {
+    setItens((atual) => atual.map((item) => (item.id === itemAnterior.id ? itemAnterior : item)));
   }, []);
 
   const buscarPorId = useCallback((id: string) => itens.find((item) => item.id === id), [itens]);
 
   const value = useMemo(
-    () => ({ itens, adicionarItem, atualizarItem, definirStatus, buscarPorId }),
-    [itens, adicionarItem, atualizarItem, definirStatus, buscarPorId],
+    () => ({ itens, adicionarItem, atualizarItem, definirStatus, restaurarEstado, buscarPorId }),
+    [itens, adicionarItem, atualizarItem, definirStatus, restaurarEstado, buscarPorId],
   );
 
   return <ItemsContext.Provider value={value}>{children}</ItemsContext.Provider>;

@@ -1,20 +1,25 @@
 import { useMemo } from 'react';
-import { FlatList, Pressable, StyleSheet } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { EmptyState } from '@/components/empty-state';
 import { ItemCard } from '@/components/item-card';
+import { PrimaryButton } from '@/components/primary-button';
 import { ScreenContainer } from '@/components/screen-container';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { ScreenHeader } from '@/components/screen-header';
 import { Spacing } from '@/constants/theme';
 import { useItems } from '@/context/items-context';
-import { useTheme } from '@/hooks/use-theme';
-import { diasAteValidade } from '@/utils/validade';
+import { diasAteValidade, urgenciaPorDias } from '@/utils/validade';
+
+function resumoDaLista(total: number, precisamAtencao: number): string {
+  if (total === 0) return 'Nenhum item cadastrado';
+  const itens = `${total} ${total === 1 ? 'item cadastrado' : 'itens cadastrados'}`;
+  if (precisamAtencao === 0) return `${itens} · tudo em dia`;
+  return `${itens} · ${precisamAtencao} ${precisamAtencao === 1 ? 'precisa' : 'precisam'} de atenção`;
+}
 
 export default function HomeScreen() {
   const { itens } = useItems();
-  const theme = useTheme();
 
   const itensAtivos = useMemo(
     () =>
@@ -24,30 +29,22 @@ export default function HomeScreen() {
     [itens],
   );
 
-  return (
-    <ScreenContainer>
-      <ThemedView style={styles.header}>
-        <ThemedView style={styles.headerText}>
-          <ThemedText type="title" style={styles.title}>
-            ValidaJá
-          </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {itensAtivos.length} {itensAtivos.length === 1 ? 'item cadastrado' : 'itens cadastrados'}
-          </ThemedText>
-        </ThemedView>
+  const precisamAtencao = itensAtivos.filter((item) => {
+    const urgencia = urgenciaPorDias(diasAteValidade(item.dataValidade));
+    return urgencia === 'vencido' || urgencia === 'urgente';
+  }).length;
 
-        <Pressable onPress={() => router.push('/configuracoes')} hitSlop={12}>
-          <ThemedView type="backgroundElement" style={styles.iconButton}>
-            <ThemedText type="default">⚙️</ThemedText>
-          </ThemedView>
-        </Pressable>
-      </ThemedView>
+  return (
+    <ScreenContainer tipo="aba">
+      <ScreenHeader titulo="ValidaJá" subtitulo={resumoDaLista(itensAtivos.length, precisamAtencao)} />
 
       {itensAtivos.length === 0 ? (
-        <EmptyState
-          titulo="Nenhum item cadastrado"
-          descricao="Cadastre alimentos com a data de validade e receba lembretes antes que eles vençam."
-        />
+        <View style={styles.lista}>
+          <EmptyState
+            titulo="Nenhum item cadastrado"
+            descricao='Toque em "Novo item" para cadastrar um alimento com a data de validade e receber lembretes antes que ele vença.'
+          />
+        </View>
       ) : (
         <FlatList
           data={itensAtivos}
@@ -55,46 +52,30 @@ export default function HomeScreen() {
           renderItem={({ item }) => (
             <ItemCard item={item} onPress={() => router.push(`/item/${item.id}`)} />
           )}
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
+          style={styles.lista}
+          contentContainerStyle={styles.listaConteudo}
+          accessibilityLabel="Itens ordenados pela data de validade, do mais urgente ao menos urgente"
         />
       )}
 
-      <Pressable onPress={() => router.push('/item/novo')}>
-        <ThemedView style={[styles.addButton, { backgroundColor: theme.text }]}>
-          <ThemedText type="smallBold" style={{ color: theme.background }}>
-            + Novo item
-          </ThemedText>
-        </ThemedView>
-      </Pressable>
+      {/* Ação principal da tela fixa na base, com largura total: alvo grande
+          e na zona de alcance do polegar (Lei de Fitts). */}
+      <PrimaryButton
+        label="Novo item"
+        icone="add"
+        accessibilityHint="Abre o formulário de cadastro de item"
+        onPress={() => router.push('/item/novo')}
+      />
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
+  lista: {
+    flex: 1,
   },
-  headerText: {
-    gap: Spacing.half,
-  },
-  title: {
-    fontSize: 30,
-    lineHeight: 36,
-  },
-  iconButton: {
-    padding: Spacing.two,
-    borderRadius: Spacing.three,
-  },
-  list: {
+  listaConteudo: {
     gap: Spacing.two,
-    paddingBottom: Spacing.four,
-  },
-  addButton: {
-    paddingVertical: Spacing.three,
-    borderRadius: Spacing.three,
-    alignItems: 'center',
+    paddingBottom: Spacing.three,
   },
 });

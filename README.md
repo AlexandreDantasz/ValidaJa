@@ -6,12 +6,14 @@ Projeto desenvolvido de forma progressiva para a disciplina de desenvolvimento m
 
 - [`docs/proposta.md`](docs/proposta.md) — Etapa 1: problema, público-alvo, funcionalidades, telas planejadas, fluxo de navegação e arquitetura.
 - [`docs/etapa-02.md`](docs/etapa-02.md) — Etapa 2: implementação do protótipo de interface (telas, componentes, entrada de dados, responsividade).
+- [`docs/etapa-03.md`](docs/etapa-03.md) — Etapa 3: navegação completa, UX (Lei de Fitts, feedback visual) e acessibilidade (leitores de tela, contraste, alvos de toque).
 
 ## Tecnologias
 
 - [React Native](https://reactnative.dev/) + [Expo](https://expo.dev/) (SDK 57)
 - [Expo Router](https://docs.expo.dev/router/introduction/) para navegação
 - TypeScript
+- [`@expo/vector-icons`](https://docs.expo.dev/guides/icons/) (Material Icons) para os ícones
 
 ## Como rodar
 
@@ -24,32 +26,43 @@ npm start
 
 Depois, escaneie o QR code exibido no terminal com o Expo Go (Android) ou a câmera (iOS), ou pressione `a`/`i`/`w` para abrir no emulador Android, simulador iOS ou navegador, respectivamente.
 
-Nesta etapa a aplicação **não tem persistência de dados**: os itens ficam em memória (estado do React) e são reiniciados para a lista de exemplo sempre que o app é recarregado.
+Para testar a navegação, o feedback visual e a acessibilidade (TalkBack/VoiceOver), siga os roteiros da seção 7 de [`docs/etapa-03.md`](docs/etapa-03.md).
+
+A aplicação ainda **não tem persistência de dados**: os itens ficam em memória (estado do React) e são reiniciados para a lista de exemplo sempre que o app é recarregado.
 
 ## Estrutura do projeto
 
 ```
 src/
-├── app/                    # telas e rotas (expo-router, roteamento por arquivo)
-│   ├── _layout.tsx          # Stack raiz + provider de estado global
-│   ├── (tabs)/               # abas: Início e Estatísticas
-│   ├── item/novo.tsx         # cadastro de item
-│   ├── item/[id].tsx         # detalhes do item
-│   ├── item/editar/[id].tsx  # edição de item
-│   └── configuracoes.tsx     # preferências de notificação (não persistidas)
-├── components/              # componentes de UI reutilizáveis
-├── constants/                # tema, categorias, cores de urgência
-├── context/                  # estado global em memória (itens)
+├── app/                      # telas e rotas (expo-router, roteamento por arquivo)
+│   ├── _layout.tsx            # Stack raiz + providers (itens e feedback)
+│   ├── (tabs)/                # abas inferiores
+│   │   ├── _layout.tsx        # barra de abas: Início, Estatísticas, Ajustes
+│   │   ├── index.tsx          # Início
+│   │   ├── explore.tsx        # Estatísticas
+│   │   └── configuracoes.tsx  # Ajustes (preferências de lembrete, não persistidas)
+│   ├── item/novo.tsx          # cadastro de item (modal)
+│   ├── item/[id].tsx          # detalhes do item
+│   ├── item/editar/[id].tsx   # edição de item (modal)
+│   └── historico.tsx          # itens consumidos/descartados
+├── components/                # componentes de UI reutilizáveis (botões, cards, toast...)
+├── constants/                 # tema (cores acessíveis, espaçamento, alvo mínimo), categorias, urgência
+├── context/                   # estado global em memória (itens) e feedback visual (avisos)
 ├── hooks/                     # hooks reutilizáveis
 ├── types/                     # tipos e modelos de dados
-└── utils/                     # cálculo de urgência de validade, formatação de datas
+└── utils/                     # validade/urgência, formatação de datas, confirmação
 ```
 
 ## Telas implementadas
 
-1. **Início** — lista dos itens cadastrados, ordenados por proximidade da validade.
-2. **Novo item** — formulário de cadastro.
-3. **Detalhes do item** — informações completas e ações (editar, marcar consumido/descartado).
-4. **Editar item** — mesmo formulário do cadastro, pré-preenchido.
-5. **Estatísticas** — resumo de itens consumidos a tempo vs. descartados por vencimento.
-6. **Configurações** — preferências de notificação (apenas visual nesta etapa).
+Navegação por **abas inferiores** (Início, Estatísticas, Ajustes) com telas de tarefa empilhadas por cima.
+
+1. **Início** (aba): itens ativos ordenados por proximidade da validade, com resumo de quantos precisam de atenção e botão **Novo item** na base da tela.
+2. **Estatísticas** (aba): itens consumidos, descartados e vencidos, e percentual de desperdício evitado. Dá acesso ao Histórico.
+3. **Ajustes** (aba): lembretes (liga/desliga) e antecedência do aviso. É apenas visual nesta etapa.
+4. **Novo item** (modal): formulário de cadastro com validação por campo.
+5. **Detalhes do item**: informações completas e as ações editar, marcar como consumido e descartar (com confirmação).
+6. **Editar item** (modal): o mesmo formulário do cadastro, pré-preenchido.
+7. **Histórico**: itens finalizados, com filtro e opção de restaurar.
+
+Toda ação que altera dados mostra um aviso na base da tela, que também é anunciado pelo leitor de tela. Consumir, descartar e restaurar podem ser desfeitos pelo próprio aviso.
