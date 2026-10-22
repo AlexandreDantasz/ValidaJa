@@ -7,12 +7,14 @@ Projeto desenvolvido de forma progressiva para a disciplina de desenvolvimento m
 - [`docs/proposta.md`](docs/proposta.md) — Etapa 1: problema, público-alvo, funcionalidades, telas planejadas, fluxo de navegação e arquitetura.
 - [`docs/etapa-02.md`](docs/etapa-02.md) — Etapa 2: implementação do protótipo de interface (telas, componentes, entrada de dados, responsividade).
 - [`docs/etapa-03.md`](docs/etapa-03.md) — Etapa 3: navegação completa, UX (Lei de Fitts, feedback visual) e acessibilidade (leitores de tela, contraste, alvos de toque).
+- [`docs/etapa-04.md`](docs/etapa-04.md) — Etapa 4: persistência com banco de dados SQL (SQLite), migrações e seed de dados de exemplo.
 
 ## Tecnologias
 
 - [React Native](https://reactnative.dev/) + [Expo](https://expo.dev/) (SDK 57)
 - [Expo Router](https://docs.expo.dev/router/introduction/) para navegação
 - TypeScript
+- [`expo-sqlite`](https://docs.expo.dev/versions/latest/sdk/sqlite/) para o banco de dados SQL local (SQLite)
 - [`@expo/vector-icons`](https://docs.expo.dev/guides/icons/) (Material Icons) para os ícones
 
 ## Como rodar
@@ -28,7 +30,7 @@ Depois, escaneie o QR code exibido no terminal com o Expo Go (Android) ou a câm
 
 Para testar a navegação, o feedback visual e a acessibilidade (TalkBack/VoiceOver), siga os roteiros da seção 7 de [`docs/etapa-03.md`](docs/etapa-03.md).
 
-A aplicação ainda **não tem persistência de dados**: os itens ficam em memória (estado do React) e são reiniciados para a lista de exemplo sempre que o app é recarregado.
+Os dados ficam num **banco SQLite local** (`validaja.db`). Na primeira abertura, o banco é criado e populado com 15 itens de exemplo (seed). Depois disso, tudo o que o usuário faz é mantido entre sessões. Para voltar aos dados de exemplo, use **Ajustes → Restaurar dados de exemplo**. Detalhes e roteiro de teste em [`docs/etapa-04.md`](docs/etapa-04.md).
 
 ## Estrutura do projeto
 
@@ -40,14 +42,15 @@ src/
 │   │   ├── _layout.tsx        # barra de abas: Início, Estatísticas, Ajustes
 │   │   ├── index.tsx          # Início
 │   │   ├── explore.tsx        # Estatísticas
-│   │   └── configuracoes.tsx  # Ajustes (preferências de lembrete, não persistidas)
+│   │   └── configuracoes.tsx  # Ajustes (preferências de lembrete e restauração da seed)
 │   ├── item/novo.tsx          # cadastro de item (modal)
 │   ├── item/[id].tsx          # detalhes do item
 │   ├── item/editar/[id].tsx   # edição de item (modal)
 │   └── historico.tsx          # itens consumidos/descartados
 ├── components/                # componentes de UI reutilizáveis (botões, cards, toast...)
 ├── constants/                 # tema (cores acessíveis, espaçamento, alvo mínimo), categorias, urgência
-├── context/                   # estado global em memória (itens) e feedback visual (avisos)
+├── context/                   # itens (lidos do banco) e feedback visual (avisos)
+├── database/                  # SQLite: schema e migrações, seed, repositórios (todo o SQL do app)
 ├── hooks/                     # hooks reutilizáveis
 ├── types/                     # tipos e modelos de dados
 └── utils/                     # validade/urgência, formatação de datas, confirmação
@@ -59,7 +62,7 @@ Navegação por **abas inferiores** (Início, Estatísticas, Ajustes) com telas 
 
 1. **Início** (aba): itens ativos ordenados por proximidade da validade, com resumo de quantos precisam de atenção e botão **Novo item** na base da tela.
 2. **Estatísticas** (aba): itens consumidos, descartados e vencidos, e percentual de desperdício evitado. Dá acesso ao Histórico.
-3. **Ajustes** (aba): lembretes (liga/desliga) e antecedência do aviso. É apenas visual nesta etapa.
+3. **Ajustes** (aba): lembretes (liga/desliga) e antecedência do aviso, salvos no banco, e o botão para restaurar os dados de exemplo.
 4. **Novo item** (modal): formulário de cadastro com validação por campo.
 5. **Detalhes do item**: informações completas e as ações editar, marcar como consumido e descartar (com confirmação).
 6. **Editar item** (modal): o mesmo formulário do cadastro, pré-preenchido.

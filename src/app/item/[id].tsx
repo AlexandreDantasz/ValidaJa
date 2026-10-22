@@ -38,8 +38,13 @@ export default function DetalhesItemScreen() {
   const dias = diasAteValidade(itemAtual.dataValidade);
   const urgencia = urgenciaPorDias(dias);
 
-  function consumir() {
-    definirStatus(itemAtual.id, 'consumido');
+  async function consumir() {
+    try {
+      await definirStatus(itemAtual.id, 'consumido');
+    } catch {
+      mostrarFeedback('Não foi possível salvar. Tente novamente.', { tipo: 'erro' });
+      return;
+    }
     router.back();
     mostrarFeedback(`"${itemAtual.nome}" marcado como consumido`, {
       acao: { rotulo: 'Desfazer', aoPressionar: () => restaurarEstado(itemAtual) },
@@ -55,7 +60,12 @@ export default function DetalhesItemScreen() {
     });
     if (!confirmado) return;
 
-    definirStatus(itemAtual.id, 'descartado');
+    try {
+      await definirStatus(itemAtual.id, 'descartado');
+    } catch {
+      mostrarFeedback('Não foi possível salvar. Tente novamente.', { tipo: 'erro' });
+      return;
+    }
     router.back();
     mostrarFeedback(`"${itemAtual.nome}" descartado`, {
       tipo: 'info',

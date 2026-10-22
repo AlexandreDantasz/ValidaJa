@@ -29,8 +29,13 @@ export default function EditarItemScreen() {
       <ItemForm
         itemInicial={item}
         textoBotao="Salvar alterações"
-        aoSalvar={(dados) => {
-          atualizarItem(item.id, dados);
+        aoSalvar={async (dados) => {
+          try {
+            await atualizarItem(item.id, dados);
+          } catch {
+            mostrarFeedback('Não foi possível salvar. Tente novamente.', { tipo: 'erro' });
+            return;
+          }
           router.back();
           mostrarFeedback('Alterações salvas');
         }}

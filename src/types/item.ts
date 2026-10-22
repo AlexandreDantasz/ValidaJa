@@ -16,3 +16,6 @@ export interface Item {
   /** Data em que o item foi marcado como consumido ou descartado. */
   finalizadoEm?: string;
 }
+
+/** Dados que o usuário informa ao cadastrar ou editar; o resto é preenchido pelo banco. */
+export type NovoItem = Omit<Item, 'id' | 'status' | 'criadoEm' | 'finalizadoEm'>;

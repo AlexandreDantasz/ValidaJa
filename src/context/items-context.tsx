@@ -1,118 +1,108 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import { useSQLiteContext } from 'expo-sqlite';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
-import type { Item, StatusItem } from '@/types/item';
-import { adicionarDias } from '@/utils/validade';
-
-const ITENS_INICIAIS: Item[] = [
-  {
-    id: '1',
-    nome: 'Leite integral',
-    categoria: 'laticinios',
-    quantidade: 1,
-    dataValidade: adicionarDias(1),
-    local: 'geladeira',
-    status: 'ativo',
-    criadoEm: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    nome: 'Peito de frango',
-    categoria: 'carnes',
-    quantidade: 2,
-    dataValidade: adicionarDias(4),
-    local: 'freezer',
-    status: 'ativo',
-    criadoEm: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    nome: 'Alface',
-    categoria: 'hortifruti',
-    quantidade: 1,
-    dataValidade: adicionarDias(-1),
-    local: 'geladeira',
-    status: 'ativo',
-    criadoEm: new Date().toISOString(),
-  },
-  {
-    id: '4',
-    nome: 'Arroz',
-    categoria: 'mercearia',
-    quantidade: 1,
-    dataValidade: adicionarDias(120),
-    local: 'despensa',
-    status: 'ativo',
-    criadoEm: new Date().toISOString(),
-  },
-  {
-    id: '5',
-    nome: 'Iogurte natural',
-    categoria: 'laticinios',
-    quantidade: 2,
-    dataValidade: adicionarDias(2),
-    local: 'geladeira',
-    status: 'consumido',
-    criadoEm: new Date().toISOString(),
-    finalizadoEm: adicionarDias(-1),
-  },
-  {
-    id: '6',
-    nome: 'Tomate',
-    categoria: 'hortifruti',
-    quantidade: 3,
-    dataValidade: adicionarDias(-3),
-    local: 'geladeira',
-    status: 'descartado',
-    criadoEm: new Date().toISOString(),
-    finalizadoEm: adicionarDias(-2),
-  },
-];
-
-type NovoItem = Omit<Item, 'id' | 'status' | 'criadoEm' | 'finalizadoEm'>;
+import * as repositorio from '@/database/itens-repository';
+import type { Item, NovoItem, StatusItem } from '@/types/item';
 
 interface ItemsContextValue {
   itens: Item[];
-  adicionarItem: (item: NovoItem) => void;
-  atualizarItem: (id: string, item: NovoItem) => void;
-  definirStatus: (id: string, status: StatusItem) => void;
+  adicionarItem: (item: NovoItem) => Promise<void>;
+  atualizarItem: (id: string, item: NovoItem) => Promise<void>;
+  definirStatus: (id: string, status: StatusItem) => Promise<void>;
   /** Volta um item exatamente ao estado salvo antes de uma ação (usado pelo "Desfazer"). */
-  restaurarEstado: (itemAnterior: Item) => void;
+  restaurarEstado: (itemAnterior: Item) => Promise<void>;
+  /** Apaga todos os itens e recria os dados de exemplo (seed). */
+  restaurarDadosExemplo: () => Promise<void>;
   buscarPorId: (id: string) => Item | undefined;
 }
 
 const ItemsContext = createContext<ItemsContextValue | null>(null);
 
+/**
+ * O banco SQLite é a fonte da verdade; `itens` é uma cópia em memória para as
+ * telas renderizarem sem esperar consultas. Toda alteração grava no banco e
+ * depois relê a tabela, de modo que a tela sempre mostra o que foi persistido.
+ */
 export function ItemsProvider({ children }: { children: ReactNode }) {
-  const [itens, setItens] = useState<Item[]>(ITENS_INICIAIS);
+  const db = useSQLiteContext();
+  const [itens, setItens] = useState<Item[]>([]);
+  const [carregando, setCarregando] = useState(true);
 
-  const adicionarItem = useCallback((novoItem: NovoItem) => {
-    setItens((atual) => [
-      ...atual,
-      { ...novoItem, id: String(Date.now()), status: 'ativo', criadoEm: new Date().toISOString() },
-    ]);
-  }, []);
+  const recarregar = useCallback(async () => {
+    setItens(await repositorio.listarItens(db));
+  }, [db]);
 
-  const atualizarItem = useCallback((id: string, dadosItem: NovoItem) => {
-    setItens((atual) => atual.map((item) => (item.id === id ? { ...item, ...dadosItem } : item)));
-  }, []);
+  // Primeira leitura do banco.
+  useEffect(() => {
+    repositorio.listarItens(db).then((lista) => {
+      setItens(lista);
+      setCarregando(false);
+    });
+  }, [db]);
 
-  const definirStatus = useCallback((id: string, status: StatusItem) => {
-    const finalizadoEm = status === 'ativo' ? undefined : new Date().toISOString();
-    setItens((atual) =>
-      atual.map((item) => (item.id === id ? { ...item, status, finalizadoEm } : item)),
-    );
-  }, []);
+  const adicionarItem = useCallback(
+    async (novoItem: NovoItem) => {
+      await repositorio.inserirItem(db, novoItem);
+      await recarregar();
+    },
+    [db, recarregar],
+  );
 
-  const restaurarEstado = useCallback((itemAnterior: Item) => {
-    setItens((atual) => atual.map((item) => (item.id === itemAnterior.id ? itemAnterior : item)));
-  }, []);
+  const atualizarItem = useCallback(
+    async (id: string, dadosItem: NovoItem) => {
+      await repositorio.atualizarItem(db, id, dadosItem);
+      await recarregar();
+    },
+    [db, recarregar],
+  );
+
+  const definirStatus = useCallback(
+    async (id: string, status: StatusItem) => {
+      await repositorio.definirStatus(db, id, status);
+      await recarregar();
+    },
+    [db, recarregar],
+  );
+
+  const restaurarEstado = useCallback(
+    async (itemAnterior: Item) => {
+      await repositorio.restaurarItem(db, itemAnterior);
+      await recarregar();
+    },
+    [db, recarregar],
+  );
+
+  const restaurarDadosExemplo = useCallback(async () => {
+    await repositorio.restaurarDadosExemplo(db);
+    await recarregar();
+  }, [db, recarregar]);
 
   const buscarPorId = useCallback((id: string) => itens.find((item) => item.id === id), [itens]);
 
   const value = useMemo(
-    () => ({ itens, adicionarItem, atualizarItem, definirStatus, restaurarEstado, buscarPorId }),
-    [itens, adicionarItem, atualizarItem, definirStatus, restaurarEstado, buscarPorId],
+    () => ({
+      itens,
+      adicionarItem,
+      atualizarItem,
+      definirStatus,
+      restaurarEstado,
+      restaurarDadosExemplo,
+      buscarPorId,
+    }),
+    [
+      itens,
+      adicionarItem,
+      atualizarItem,
+      definirStatus,
+      restaurarEstado,
+      restaurarDadosExemplo,
+      buscarPorId,
+    ],
   );
+
+  // Até a primeira leitura terminar não há o que mostrar: renderizar as telas
+  // antes disso faria "Nenhum item" piscar, ou "Item não encontrado" num link direto.
+  if (carregando) return null;
 
   return <ItemsContext.Provider value={value}>{children}</ItemsContext.Provider>;
 }

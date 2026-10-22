@@ -1,13 +1,23 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useState } from 'react';
+import { useSQLiteContext } from 'expo-sqlite';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Switch, View } from 'react-native';
 
+import { PrimaryButton } from '@/components/primary-button';
 import { ScreenContainer } from '@/components/screen-container';
 import { ScreenHeader } from '@/components/screen-header';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MinTouchTarget, Spacing } from '@/constants/theme';
+import { useFeedback } from '@/context/feedback-context';
+import { useItems } from '@/context/items-context';
+import {
+  CONFIGURACOES_PADRAO,
+  lerConfiguracoes,
+  salvarConfiguracao,
+} from '@/database/configuracoes-repository';
 import { useTheme } from '@/hooks/use-theme';
+import { confirmar } from '@/utils/confirmar';
 
 const MIN_DIAS = 1;
 const MAX_DIAS = 14;
@@ -49,11 +59,54 @@ function BotaoStepper({ icone, disabled, onPress }: BotaoStepperProps) {
 
 export default function ConfiguracoesScreen() {
   const theme = useTheme();
-  const [notificacoesAtivas, setNotificacoesAtivas] = useState(true);
-  const [diasAntecedencia, setDiasAntecedencia] = useState(3);
+  const db = useSQLiteContext();
+  const { restaurarDadosExemplo } = useItems();
+  const { mostrarFeedback } = useFeedback();
+  const [notificacoesAtivas, setNotificacoesAtivas] = useState(
+    CONFIGURACOES_PADRAO.notificacoesAtivas,
+  );
+  const [diasAntecedencia, setDiasAntecedencia] = useState(CONFIGURACOES_PADRAO.diasAntecedencia);
 
-  const diminuir = () => setDiasAntecedencia((dias) => Math.max(MIN_DIAS, dias - 1));
-  const aumentar = () => setDiasAntecedencia((dias) => Math.min(MAX_DIAS, dias + 1));
+  // Carrega as preferências salvas no banco ao abrir a aba.
+  useEffect(() => {
+    lerConfiguracoes(db).then((config) => {
+      setNotificacoesAtivas(config.notificacoesAtivas);
+      setDiasAntecedencia(config.diasAntecedencia);
+    });
+  }, [db]);
+
+  // Cada alteração atualiza a tela na hora e é gravada no banco em seguida.
+  function alternarNotificacoes() {
+    const valor = !notificacoesAtivas;
+    setNotificacoesAtivas(valor);
+    salvarConfiguracao(db, 'notificacoesAtivas', valor);
+  }
+
+  function alterarDias(delta: number) {
+    const valor = Math.min(MAX_DIAS, Math.max(MIN_DIAS, diasAntecedencia + delta));
+    setDiasAntecedencia(valor);
+    salvarConfiguracao(db, 'diasAntecedencia', valor);
+  }
+
+  const diminuir = () => alterarDias(-1);
+  const aumentar = () => alterarDias(1);
+
+  async function restaurarExemplos() {
+    const confirmado = await confirmar({
+      titulo: 'Restaurar dados de exemplo?',
+      mensagem: 'Todos os itens e o histórico atuais serão apagados e substituídos pelos itens de exemplo.',
+      rotuloConfirmar: 'Restaurar',
+      destrutivo: true,
+    });
+    if (!confirmado) return;
+
+    try {
+      await restaurarDadosExemplo();
+      mostrarFeedback('Dados de exemplo restaurados');
+    } catch {
+      mostrarFeedback('Não foi possível restaurar os dados. Tente novamente.', { tipo: 'erro' });
+    }
+  }
 
   return (
     <ScreenContainer scroll tipo="aba">
@@ -61,7 +114,7 @@ export default function ConfiguracoesScreen() {
 
       {/* A linha inteira alterna o switch: alvo de toque muito maior que o próprio switch. */}
       <Pressable
-        onPress={() => setNotificacoesAtivas((ativo) => !ativo)}
+        onPress={alternarNotificacoes}
         accessibilityRole="switch"
         accessibilityLabel="Lembretes de validade"
         accessibilityHint="Avisar antes de um item vencer"
@@ -141,13 +194,21 @@ export default function ConfiguracoesScreen() {
         </ThemedText>
       </ThemedView>
 
-      <View style={styles.aviso}>
-        <MaterialIcons name="info-outline" size={18} color={theme.textSecondary} />
-        <ThemedText type="small" themeColor="textSecondary" style={styles.avisoTexto}>
-          Estas preferências ainda não são salvas entre sessões — a persistência de dados entra em
-          uma etapa futura do projeto.
-        </ThemedText>
-      </View>
+      <ThemedView type="backgroundElement" style={styles.card}>
+        <View style={styles.linhaTexto}>
+          <ThemedText type="default">Dados do aplicativo</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            Os itens e estas preferências ficam salvos no banco de dados do aparelho.
+          </ThemedText>
+        </View>
+        <PrimaryButton
+          label="Restaurar dados de exemplo"
+          variante="perigo"
+          icone="restore"
+          accessibilityHint="Pede confirmação, apaga os itens atuais e recria os itens de exemplo"
+          onPress={restaurarExemplos}
+        />
+      </ThemedView>
     </ScreenContainer>
   );
 }
@@ -187,12 +248,5 @@ const styles = StyleSheet.create({
   },
   centro: {
     textAlign: 'center',
-  },
-  aviso: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-  },
-  avisoTexto: {
-    flexShrink: 1,
   },
 });

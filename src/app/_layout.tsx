@@ -1,5 +1,6 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider, router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { SQLiteProvider } from 'expo-sqlite';
 import { Pressable, StyleSheet, useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
@@ -7,6 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { MinTouchTarget, Spacing } from '@/constants/theme';
 import { FeedbackProvider } from '@/context/feedback-context';
 import { ItemsProvider } from '@/context/items-context';
+import { migrarBanco, NOME_BANCO } from '@/database/schema';
 import { useTheme } from '@/hooks/use-theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -35,29 +37,32 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <ItemsProvider>
-        <FeedbackProvider>
-          <AnimatedSplashOverlay />
-          <Stack
-            screenOptions={{
-              headerTintColor: theme.primary,
-              headerTitleStyle: { color: theme.text },
-              headerBackButtonDisplayMode: 'minimal',
-            }}>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false, title: 'Início' }} />
-            <Stack.Screen
-              name="item/novo"
-              options={{ title: 'Novo item', presentation: 'modal', headerLeft: BotaoCancelar }}
-            />
-            <Stack.Screen name="item/[id]" options={{ title: 'Detalhes do item' }} />
-            <Stack.Screen
-              name="item/editar/[id]"
-              options={{ title: 'Editar item', presentation: 'modal', headerLeft: BotaoCancelar }}
-            />
-            <Stack.Screen name="historico" options={{ title: 'Histórico' }} />
-          </Stack>
-        </FeedbackProvider>
-      </ItemsProvider>
+      {/* Abre o banco e roda as migrações (e o seed, na primeira abertura) antes de renderizar o app. */}
+      <SQLiteProvider databaseName={NOME_BANCO} onInit={migrarBanco}>
+        <ItemsProvider>
+          <FeedbackProvider>
+            <AnimatedSplashOverlay />
+            <Stack
+              screenOptions={{
+                headerTintColor: theme.primary,
+                headerTitleStyle: { color: theme.text },
+                headerBackButtonDisplayMode: 'minimal',
+              }}>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false, title: 'Início' }} />
+              <Stack.Screen
+                name="item/novo"
+                options={{ title: 'Novo item', presentation: 'modal', headerLeft: BotaoCancelar }}
+              />
+              <Stack.Screen name="item/[id]" options={{ title: 'Detalhes do item' }} />
+              <Stack.Screen
+                name="item/editar/[id]"
+                options={{ title: 'Editar item', presentation: 'modal', headerLeft: BotaoCancelar }}
+              />
+              <Stack.Screen name="historico" options={{ title: 'Histórico' }} />
+            </Stack>
+          </FeedbackProvider>
+        </ItemsProvider>
+      </SQLiteProvider>
     </ThemeProvider>
   );
 }

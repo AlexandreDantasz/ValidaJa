@@ -13,8 +13,13 @@ export default function NovoItemScreen() {
     <ScreenContainer scroll>
       <ItemForm
         textoBotao="Salvar item"
-        aoSalvar={(dados) => {
-          adicionarItem(dados);
+        aoSalvar={async (dados) => {
+          try {
+            await adicionarItem(dados);
+          } catch {
+            mostrarFeedback('Não foi possível salvar. Tente novamente.', { tipo: 'erro' });
+            return;
+          }
           router.back();
           mostrarFeedback(`"${dados.nome}" adicionado à lista`);
         }}

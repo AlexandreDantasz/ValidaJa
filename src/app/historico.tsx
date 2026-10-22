@@ -82,8 +82,13 @@ export default function HistoricoScreen() {
     [itens, filtro],
   );
 
-  function restaurar(item: Item) {
-    definirStatus(item.id, 'ativo');
+  async function restaurar(item: Item) {
+    try {
+      await definirStatus(item.id, 'ativo');
+    } catch {
+      mostrarFeedback('Não foi possível salvar. Tente novamente.', { tipo: 'erro' });
+      return;
+    }
     mostrarFeedback(`"${item.nome}" voltou para a lista de itens`, {
       acao: { rotulo: 'Desfazer', aoPressionar: () => restaurarEstado(item) },
     });
